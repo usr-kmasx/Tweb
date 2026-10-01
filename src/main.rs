@@ -129,6 +129,41 @@ struct AppState {
     in_web: RefCell<bool>,
 }
 
+fn web_shim_main() -> glib::ExitCode {
+    use std::io::Write;
+    use std::os::unix::net::UnixStream;
+
+    match UnixStream::connect(socket_path()) {
+        Ok(mut s) => {
+            s.set_write_timeout(Some(std::time::Duration::from_secs(2)))
+                .ok();
+            match s.write_all(b"web\n") {
+                Ok(()) => glib::ExitCode::SUCCESS,
+                Err(e) => {
+                    eprintln!("web: nao foi possivel falar com o Tweb ({e})");
+                    glib::ExitCode::FAILURE
+                }
+            }
+        }
+        Err(e) => {
+            eprintln!("web: nao foi possivel falar com o Tweb ({e})");
+            glib::ExitCode::FAILURE
+        }
+    }
+}
+
+fn invoked_as_web() -> bool {
+    std::env::args()
+        .next()
+        .and_then(|a| {
+            std::path::Path::new(&a)
+                .file_name()
+                .map(|s| s.to_string_lossy().into_owned())
+        })
+        .map(|n| n == "web")
+        .unwrap_or(false)
+}
+
 fn user_shell() -> String {
     std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".to_string())
 }
@@ -555,6 +590,9 @@ fn build_ui(app: &Application) {
 }
 
 fn main() -> glib::ExitCode {
+    if invoked_as_web() {
+        return web_shim_main();
+    }
     let app = Application::builder().application_id(APP_ID).build();
     app.connect_activate(build_ui);
     app.run()

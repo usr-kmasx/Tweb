@@ -13,7 +13,7 @@ info() { echo "tweb-install: $*"; }
 # 0. pré-condições
 REPO_ROOT="$(cd "$(dirname "$0")" && pwd)"
 [ -f "$REPO_ROOT/Cargo.toml" ] || die "rode na raiz do repositório Tweb (sem Cargo.toml aqui)"
-[ -f "$REPO_ROOT/bin/web" ] || die "sem bin/web aqui"
+[ -f "$REPO_ROOT/bin/web" ] || [ -L "$REPO_ROOT/bin/web" ] || die "sem bin/web aqui"
 [ -f "$REPO_ROOT/src/main.rs" ] || die "sem src/main.rs aqui"
 [ "$(id -u)" -ne 0 ] || die "rode como usuário normal com sudo, não como root"
 command -v sudo >/dev/null || die "sudo não encontrado"
@@ -77,9 +77,9 @@ fi
 cd "$REPO_ROOT"
 cargo build --release --locked
 
-# 7. instala binários (web vai junto no PATH, o app já o encontra)
+# 7. instala binário + symlink web (mesmo arquivo, multicall por argv[0])
 sudo install -Dm755 "$REPO_ROOT/target/release/tweb" "$PREFIX/$APP_BIN"
-sudo install -Dm755 "$REPO_ROOT/bin/web" "$PREFIX/$SHIM_BIN"
+sudo ln -sf "$PREFIX/$APP_BIN" "$PREFIX/$SHIM_BIN"
 
 # 8. verifica linkage
 MISSING="$(ldd "$PREFIX/$APP_BIN" 2>/dev/null | grep 'not found' || true)"
