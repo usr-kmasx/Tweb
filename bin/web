@@ -1,0 +1,24 @@
+#!/usr/bin/env python3
+"""Comando `web`: pede ao Tweb para trocar a janela para a pagina web (DDG)."""
+import os
+import socket
+import sys
+
+
+def main() -> int:
+    rundir = os.environ.get("XDG_RUNTIME_DIR", "/tmp")
+    path = os.path.join(rundir, "tweb-web.sock")
+    try:
+        s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        s.settimeout(2)
+        s.connect(path)
+        s.sendall(b"web\n")
+        s.close()
+    except OSError as e:
+        print(f"web: nao foi possivel falar com o Tweb ({e})", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
